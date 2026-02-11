@@ -9,3 +9,9 @@ export function respondWithJSON(res: Response, code: number, payload: any) {
   const body = JSON.stringify(payload);
   res.status(code).send(body);
 }
+
+export function respondWithGenericError(res: Response, code: number, message: any) {
+  res.header("Content-Type", "application/json");
+  const body = JSON.stringify({ error: message });
+  res.status(code).send(body);
+}

@@ -1,6 +1,7 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { config } from "../config.js";
 import { respondWithError, respondWithJSON } from "./json.js";
+import { BadRequestError } from "./erros.js";
 export function handlerReadiness(req: Request, res: Response): void {
   res.set({
     "Content-Type": "text/plain; charset=utf-8",
@@ -17,7 +18,7 @@ export function handlerMetrics(req: Request, res: Response): void {
     <html>
       <body>
         <h1>Welcome, Chirpy Admin</h1>
-        <p>Chirpy has been visited ${config.fileserverHits} times!</p>
+        <p>Chirpy has been visited ${config.api.fileserverHits} times!</p>
       </body>
     </html>
   `);
@@ -28,7 +29,7 @@ export function handlerReset(req: Request, res: Response): void {
     "Content-Type": "text/plain; charset=utf-8",
   });
 
-  config.fileserverHits = 0;
+  config.api.fileserverHits = 0;
 
   res.status(200).send("Hits reseted");
 }
@@ -43,15 +44,14 @@ export function handlerValidate(req: Request, res: Response): void {
   const maxLength = 140;
 
   if (chirp.length > maxLength) {
-    respondWithError(res, 400, "Chirp is too long");
-    return;
+      throw new BadRequestError("Chirp is too long. Max length is 140");
   }
 
   const profanity = new Set(["kerfuffle", "sharbert", "fornax"]);
   const words = chirp.split(" ");
 
   for (let i = 0; i < words.length; i++) {
-    const word = words[i]
+    const word = words[i];
     if (profanity.has(word.toLowerCase())) {
       words[i] = "****";
     }
