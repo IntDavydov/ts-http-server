@@ -1,22 +1,30 @@
 import type { MigrationConfig } from "drizzle-orm/migrator";
-import { NotDefinedError } from "./api/erros.js";
+import { NotDefinedError } from "./api/errors.js";
 
-process.loadEnvFile();
+process.loadEnvFile(); // load env to process
 
 type APIConfig = {
-    dbURL: string;
-    fileserverHits: number;
+  dbURL: string;
+  fileserverHits: number;
+  platform: string;
 };
 
 type DBConfig = {
-    url: string;
-    migrationConfig: MigrationConfig;
+  url: string;
+  migrationConfig: MigrationConfig;
+};
+
+type JWTConfig = {
+  defaultDuration: number;
+  secret: string;
+  issuer: string;
 };
 
 type Config = {
-  api: APIConfig,
-  db: DBConfig
-}
+  api: APIConfig;
+  db: DBConfig;
+  jwt: JWTConfig;
+};
 
 function envOrThrow(key: string): string {
   const value = process.env[key];
@@ -36,9 +44,15 @@ export const config: Config = {
   api: {
     fileserverHits: 0,
     dbURL: envOrThrow("DB_URL"),
+    platform: envOrThrow("PLATFORM"),
   },
   db: {
     url: envOrThrow("DB_URL"),
     migrationConfig,
+  },
+  jwt: {
+    defaultDuration: 60 * 60,
+    secret: envOrThrow("JWT_SECRET"),
+    issuer: "chirpy",
   },
 };

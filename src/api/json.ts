@@ -6,12 +6,12 @@ export function respondWithError(res: Response, code: number, message: string) {
 
 export function respondWithJSON(res: Response, code: number, payload: any) {
   res.header("Content-Type", "application/json");
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify(payload, null, 2);
   res.status(code).send(body);
 }
 
 export function respondWithGenericError(res: Response, code: number, message: any) {
   res.header("Content-Type", "application/json");
-  const body = JSON.stringify({ error: message });
+  const body = JSON.stringify({ error: message }, null, 2);
   res.status(code).send(body);
 }
