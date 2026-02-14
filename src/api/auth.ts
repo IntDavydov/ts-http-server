@@ -65,7 +65,7 @@ function handleJWTError(err: unknown): never {
 export function getBearerToken(req: Request): string {
   const authHeader = req.header("Authorization");
   if (!authHeader) {
-    throw new UnauthorizedError("Malformed authorization header");
+    throw new UnauthorizedError("Malformed or missing authorization header");
   }
 
   return extractBearerToken(authHeader);
@@ -74,7 +74,7 @@ export function getBearerToken(req: Request): string {
 export function extractBearerToken(header: string) {
   const split = header.split(" ");
   if (split.length < 2 || split[0] !== "Bearer")
-    throw new BadRequestError("Malformed authorization header");
+    throw new BadRequestError("Malformed or missing authorization header");
 
   return split[1];
 }
@@ -84,5 +84,21 @@ export function makeRefreshToken(): string {
   return buffer.toString("hex");
 }
 
-// 1796a1bb4e3bcd6a032983fcb035826a919f19553420b94395b26a0550721881
-// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiI4YWY5Y2JjYy0yNTg5LTRjNGYtOWRlYy1kNmUyOWI2ZTkxZjciLCJpYXQiOjE3NzEwMTYzNTcsImV4cCI6MTc3MTAxOTk1N30.5VYGW9aVNih3CTfnXiXgDizSDDvuPysVYTHLjQrHrYY
+export function getAPIKey(req: Request): string {
+  const authHeader = req.header("Authorization");
+  if (!authHeader) {
+    throw new UnauthorizedError("Malformed or missing authorization header");
+  }
+
+  return extractApiKey(authHeader);
+}
+
+export function extractApiKey(header: string) {
+  const split = header.split(" ");
+  if (split.length < 2 || split[0] !== "ApiKey")
+    throw new BadRequestError("Malformed or missing authorization header");
+
+  return split[1];
+}
+
+// TODO tests for extracting API KEY merge extracting of header together ?

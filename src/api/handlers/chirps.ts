@@ -2,11 +2,17 @@ import { Request, Response } from "express";
 import {
   BadRequestError,
   DBError,
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
 } from "../errors.js";
 import { respondWithJSON } from "../json.js";
-import { addChirp, getChirp, getChirps } from "../../db/queries/chirps.js";
+import {
+  addChirp,
+  deleteChirp,
+  getChirp,
+  getChirps,
+} from "../../db/queries/chirps.js";
 import { getBearerToken, validateJWT } from "../auth.js";
 import { config } from "../../config.js";
 
@@ -29,7 +35,7 @@ export async function handleGetChirp(
 ): Promise<void> {
   const chirpId = req.params.chirpId;
   if (!chirpId || Array.isArray(chirpId)) {
-    throw new BadRequestError("Chirp id should be a string not an array");
+    throw new BadRequestError("Missed chirpId or it's an array");
   }
 
   const chirp = await getChirp(chirpId);
@@ -48,8 +54,8 @@ export async function handlerAddChirp(
     body: string;
   };
 
-  const token = getBearerToken(req)
-  const userId = validateJWT(token, config.jwt.secret)
+  const jwt = getBearerToken(req);
+  const userId = validateJWT(jwt, config.jwt.secret);
 
   const params: Params = req.body;
   const cleaned = validateChirpParams(params.body, userId);
@@ -100,4 +106,33 @@ function getCleanedBody(body: string, profanity: Set<string>) {
 
   const cleaned = words.join(" ");
   return cleaned;
+}
+
+export async function handlerDeleteChirp(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const jwt = getBearerToken(req);
+  const userId = validateJWT(jwt, config.jwt.secret);
+
+  const chirpId = req.params.chirpId;
+  if (!chirpId || Array.isArray(chirpId) || typeof chirpId === "string") {
+    throw new BadRequestError("Missed or malformed chirpId param");
+  }
+
+  const chirp = await getChirp(chirpId);
+  if (!chirp)
+    throw new NotFoundError(`Chirp with chirpId: ${chirpId} not found`);
+
+  if (chirp.userId !== userId)
+    throw new ForbiddenError("Access denied, unauthorized");
+
+  const deletedChirp = await deleteChirp({ chirpId, userId });
+  if (!deletedChirp)
+    throw new Error(`Failed to delete chirp with chirpId: ${chirpId}`);
+
+  respondWithJSON(res, 204, {
+    body: deletedChirp.body,
+    message: "Deleted Successfuly",
+  });
 }

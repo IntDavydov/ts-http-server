@@ -24,10 +24,42 @@ export async function getUserByEmail(email: string): Promise<User | undefined> {
   return result;
 }
 
-export async function getUserById(
-  userId: string,
-): Promise<User | undefined> {
+export async function getUserById(userId: string): Promise<User | undefined> {
   const [result] = await db.select().from(users).where(eq(users.id, userId));
 
   return result;
+} // TODO
+
+type UpdateUserArgs = {
+  userId: string;
+  email: string;
+  hashedPassword: string;
+};
+
+export async function updateUserCreds({
+  userId,
+  email,
+  hashedPassword,
+}: UpdateUserArgs): Promise<User | undefined> {
+  const [result] = await db
+    .update(users)
+    .set({ email, hashedPassword })
+    .where(eq(users.id, userId))
+    .returning();
+
+  return result;
 }
+
+export async function updateChirpyRed({
+  userId,
+}: Pick<UpdateUserArgs, "userId">): Promise<User | undefined> {
+  const [result] = await db
+    .update(users)
+    .set({ isChirpyRed: true })
+    .where(eq(users.id, userId))
+    .returning();
+
+  return result;
+}
+
+// TODO: remember prefix queries with db examle dbUpdateUser

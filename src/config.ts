@@ -16,14 +16,20 @@ type DBConfig = {
 
 type JWTConfig = {
   defaultDuration: number;
+  refreshDuration: number;
   secret: string;
   issuer: string;
+};
+
+type WebhookConfig = {
+  polkaAPI: string;
 };
 
 type Config = {
   api: APIConfig;
   db: DBConfig;
   jwt: JWTConfig;
+  webhook: WebhookConfig;
 };
 
 function envOrThrow(key: string): string {
@@ -54,5 +60,9 @@ export const config: Config = {
     defaultDuration: 60 * 60,
     secret: envOrThrow("JWT_SECRET"),
     issuer: "chirpy",
+    refreshDuration: 60 * 60 * 24 * 60 * 1000,
+  },
+  webhook: {
+    polkaAPI: envOrThrow("POLKA_API_KEY"),
   },
 };

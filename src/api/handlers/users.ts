@@ -1,12 +1,26 @@
 import { Request, Response } from "express";
-import { BadRequestError, DBError, UnauthorizedError } from "../errors.js";
-import { createUser, getUserByEmail } from "../../db/queries/users.js";
+import {
+  BadRequestError,
+  DBError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../errors.js";
+import {
+  createUser,
+  getUserByEmail,
+  getUserById,
+  updateChirpyRed,
+  updateUserCreds,
+} from "../../db/queries/users.js";
 import { respondWithJSON } from "../json.js";
 import {
   checkPasswordHash,
+  getAPIKey,
+  getBearerToken,
   hashPassword,
   makeJWT,
   makeRefreshToken,
+  validateJWT,
 } from "../auth.js";
 import { config } from "../../config.js";
 import { UserResponse } from "../../db/schema.js";
@@ -45,7 +59,8 @@ export async function handlerAddUser(
     createdAt: newUser.createdAt,
     updatedAt: newUser.updatedAt,
     email: newUser.email,
-  });
+    isChirpyRed: newUser.isChirpyRed,
+  } satisfies UserResponse);
 }
 
 export async function handlerLoginUser(
@@ -74,19 +89,12 @@ export async function handlerLoginUser(
     throw new UnauthorizedError("incorrect password");
   }
 
-  const duration = config.jwt.defaultDuration; // 3600mls
-  const token = makeJWT(user.id, duration, config.jwt.secret);
+  const token = makeJWT(user.id, config.jwt.defaultDuration, config.jwt.secret);
 
-  const sixtyDays = duration * 1000 * 24 * 60; // 60 days
+  const refreshToken = makeRefreshToken();
+  const saved = await addRefreshToken(user.id, refreshToken);
 
-  const refreshTokenBody = {
-    token: makeRefreshToken(),
-    userId: user.id,
-    expiresAt: new Date(Date.now() + sixtyDays),
-  };
-  const refreshToken = await addRefreshToken(refreshTokenBody);
-
-  if (!refreshToken) {
+  if (!saved) {
     throw new DBError("Cannot create new refresh token");
   }
 
@@ -96,8 +104,42 @@ export async function handlerLoginUser(
     updatedAt: user.updatedAt,
     email: user.email,
     token,
-    refreshToken: refreshToken.token,
+    refreshToken: saved.token,
+    isChirpyRed: user.isChirpyRed,
   } satisfies LoginResponse);
 }
 
-// TODO: helper function
+export async function handlerUpdateUser(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  type Params = {
+    email: string;
+    password: string;
+  };
+
+  const jwt = getBearerToken(req);
+  const userId = validateJWT(jwt, config.jwt.secret);
+
+  const params: Params = req.body;
+
+  const { password, email } = params;
+
+  if (!password || !email) {
+    throw new BadRequestError("Missing required fields");
+  }
+
+  const hashedPassword = await hashPassword(password);
+  const updatedUser = await updateUserCreds({ userId, email, hashedPassword });
+
+  if (!updatedUser) {
+    throw new DBError(`Email or password cannot be updated`);
+  }
+
+  const { hashedPassword: hp, ...other } = updatedUser;
+  respondWithJSON(res, 200, {
+    ...other,
+  } satisfies UserResponse);
+}
+
+

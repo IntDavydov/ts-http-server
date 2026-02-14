@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "type": "module",
+  "imports": {
+    "#*": "./dist/*.js"
+  },
   "scripts": {
     "test": "vitest --run",
     "build": "npx tsc",

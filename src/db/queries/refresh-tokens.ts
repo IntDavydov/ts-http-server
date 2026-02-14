@@ -1,13 +1,21 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { db } from "../index.js";
-import { NewRefreshToken, RefreshToken, refreshTokens } from "../schema.js";
+import { RefreshToken, refreshTokens, User, users } from "../schema.js";
+import { DBError } from "../../api/errors.js";
+import { config } from "../../config.js";
 
 export async function addRefreshToken(
-  dbToken: NewRefreshToken,
+  userId: string,
+  token: string,
 ): Promise<RefreshToken> {
   const [result] = await db
     .insert(refreshTokens)
-    .values(dbToken)
+    .values({
+      userId,
+      token,
+      expiresAt: new Date(Date.now() + config.jwt.refreshDuration),
+      revokedAt: null,
+    })
     .onConflictDoNothing()
     .returning();
 
@@ -25,12 +33,33 @@ export async function getRefreshToken(
   return result;
 }
 
-export async function revokeRefreshToken(
-  updatedAt: Date,
-  refreshToken: string,
-): Promise<void> {
-  await db
+export async function userForRefreshToken(
+  token: string,
+): Promise<{ user: User } | undefined> {
+  const [result] = await db
+    .select({ user: users })
+    .from(users)
+    .innerJoin(refreshTokens, eq(users.id, refreshTokens.userId))
+    .where(
+      and(
+        eq(refreshTokens.token, token),
+        isNull(refreshTokens.revokedAt), // just null check
+        gt(refreshTokens.expiresAt, new Date()), // greater than compare Date objects
+      ),
+    )
+    .limit(1);
+
+  return result;
+}
+
+export async function revokeRefreshToken(token: string): Promise<void> {
+  const now = new Date();
+
+  const [res] = await db
     .update(refreshTokens)
-    .set({ updatedAt, revokedAt: updatedAt })
-    .where(eq(refreshTokens.token, refreshToken));
+    .set({ updatedAt: now, revokedAt: now })
+    .where(eq(refreshTokens.token, token))
+    .returning();
+
+  if (!res) throw new DBError("Cannot revoke token");
 }

@@ -1,5 +1,11 @@
 import { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { pgTable, timestamp, varchar, text, uuid } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  timestamp,
+  varchar,
+  uuid,
+  boolean,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -12,6 +18,7 @@ export const users = pgTable("users", {
   hashedPassword: varchar("hashed_password", { length: 256 })
     .notNull()
     .default("unset"),
+  isChirpyRed: boolean("is_chirpy_red").default(false).notNull(),
 });
 
 export type NewUser = InferInsertModel<typeof users>;
@@ -35,7 +42,7 @@ export type NewChirp = InferInsertModel<typeof chirps>;
 export type Chirp = InferSelectModel<typeof chirps>;
 
 export const refreshTokens = pgTable("refresh_tokens", {
-  token: text().primaryKey().notNull(),
+  token: varchar("token", { length: 256 }).primaryKey().notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at")
     .notNull()
